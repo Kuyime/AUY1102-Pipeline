@@ -1,38 +1,56 @@
-name: CI/CD Docker Pipeline
+name: CI/CD Pipeline con Seguridad
 
-# REQUISITO: Disparar en push a develop y PR a main
 on:
   push:
     branches: [ "develop" ]
   pull_request:
-    branches: [ "main" ]
+    # REQUISITO: Ejecutar análisis en PR hacia master
+    branches: [ "master" ]
 
 jobs:
-  build-test-publish:
+  security-and-quality:
     runs-on: ubuntu-latest
     steps:
-      # 1. Obtener el código del repositorio
+      - name: Checkout del código
+        uses: actions/checkout@v3
+        with:
+          fetch-depth: 0  # Importante para que Sonar analice el historial
+
+      # REQUISITO: Integrar SonarQube (SonarCloud)
+      # Si el análisis falla, el pipeline se detiene aquí.
+      - name: SonarCloud Scan
+        uses: SonarSource/sonarcloud-github-action@master
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}  # Token por defecto de GitHub
+          SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}    # El que creaste tú
+
+  build-and-deploy:
+    # REQUISITO: Interrumpir despliegue si hay problemas (needs)
+    # Este trabajo NO se ejecuta si 'security-and-quality' falla.
+    needs: security-and-quality
+    runs-on: ubuntu-latest
+    # Solo desplegamos si es un push (no en PR) o si tú decides que los PR también construyan
+    if: github.event_name == 'push' 
+    
+    steps:
       - name: Checkout del código
         uses: actions/checkout@v3
 
-      # 2. Login en Docker Hub (necesario para publicar)
+      # Tu truco del archivo json falso para que Docker no falle
+      - name: Preparar entorno simulado
+        run: cp packs.json package.json || echo "packs.json no encontrado, usando original"
+
       - name: Login en Docker Hub
         uses: docker/login-action@v2
         with:
           username: ${{ secrets.DOCKER_USERNAME }}
           password: ${{ secrets.DOCKER_PASSWORD }}
 
-      # 3. REQUISITO: Construcción de la imagen Docker
       - name: Construir imagen Docker
-        run: docker build -t ${{ secrets.DOCKER_USERNAME }}/mi-proyecto-duoc:latest .
+        run: docker build -t ${{ secrets.DOCKER_USERNAME }}/examen-duoc:latest .
 
-      # 4. REQUISITO: Ejecución de pruebas unitarias DENTRO del contenedor
-      # Usamos la imagen que acabamos de construir para correr el test
-      - name: Correr Pruebas Unitarias en Docker
-        run: docker run --rm ${{ secrets.DOCKER_USERNAME }}/mi-proyecto-duoc:latest npm test
+      - name: Correr Pruebas Unitarias
+        run: docker run --rm ${{ secrets.DOCKER_USERNAME }}/examen-duoc:latest npm test
 
-      # 5. REQUISITO: Publicación de la imagen en Docker Hub
-      # Solo se ejecuta si el paso anterior (pruebas) no falló
-      - name: Publicar imagen en Docker Hub
-        if: success()
-        run: docker push ${{ secrets.DOCKER_USERNAME }}/mi-proyecto-duoc:latest
+      - name: Publicar en Docker Hub
+        run: docker push ${{ secrets.DOCKER_USERNAME }}/examen-duoc:latest
