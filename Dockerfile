@@ -1,7 +1,17 @@
-FROM node:14-alpine3.16
+# Usamos una imagen base ligera de Node
+FROM node:18-alpine
 
+# Establecemos el directorio de trabajo dentro del contenedor
+WORKDIR /app
+
+# Copiamos los archivos de definición de dependencias
+COPY package.json ./
+
+# Instalamos las dependencias (si las hubiera)
+RUN npm install
+
+# Copiamos el resto del código fuente
 COPY . .
 
-WORKDIR /usr/src/app/
-
-RUN npm version
+# Comando por defecto para iniciar la app
+CMD ["npm", "start"]
