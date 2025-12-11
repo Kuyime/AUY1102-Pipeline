@@ -1,14 +1,15 @@
 FROM node:18-alpine
 WORKDIR /app
 
-# TRUCO: Copiamos packs.json pero lo renombramos a package.json dentro de la imagen
+# TRUCO CRÍTICO: Copiamos packs.json pero lo guardamos como 'package.json' dentro del Docker
+# Esto engaña al sistema para que use tus scripts simples y no el complejo de TSDX
 COPY packs.json ./package.json
 
-# Instalamos (será instantáneo)
+# Instalamos dependencias (será muy rápido)
 RUN npm install
 
-# Copiamos el resto de archivos (por si acaso)
+# Copiamos el resto de archivos (app.js, etc.)
 COPY . .
 
-# Comando que ejecuta el echo del packs.json
+# Ejecutamos el comando de inicio
 CMD ["npm", "start"]

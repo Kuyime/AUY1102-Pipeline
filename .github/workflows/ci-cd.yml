@@ -1,33 +1,34 @@
-name: CI/CD Pipeline - Examen
+name: CI/CD Pipeline - Examen Final
 
 on:
   push:
     branches: [ "develop" ]
   pull_request:
-    branches: [ "master" ] # CORREGIDO: Apuntando a master
+    # REQUISITO: Disparar en PR hacia la rama 'master'
+    branches: [ "master" ]
 
 jobs:
-  # TRABAJO 1: Seguridad y Calidad (Parte 3)
+  # TRABAJO 1: Análisis de Seguridad y Calidad
   security-check:
     runs-on: ubuntu-latest
     steps:
       - name: Descargar Código
         uses: actions/checkout@v3
         with:
-          fetch-depth: 0 # Necesario para SonarCloud
+          fetch-depth: 0 # Importante para que Sonar lea el historial
 
       - name: SonarCloud Scan
         uses: SonarSource/sonarcloud-github-action@master
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
-        # Si esto falla, el pipeline se detiene aquí (Exit code error)
+        # Si falla el nombre del proyecto o la calidad, esto se pondrá rojo ❌
 
-  # TRABAJO 2: Build y Deploy Docker (Parte 2)
+  # TRABAJO 2: Build y Deploy Docker
   build-and-deploy:
-    needs: security-check # REQUISITO: Depende de que seguridad pase
+    needs: security-check # REQUISITO: Interrumpir despliegue si falla seguridad
     runs-on: ubuntu-latest
-    if: always() # Intenta ejecutar para ver logs, pero 'needs' lo bloqueará si falla el anterior
+    if: always() # Intenta correr para ver logs, pero 'needs' manda
 
     steps:
       - name: Descargar Código
@@ -42,7 +43,8 @@ jobs:
       - name: Construir Imagen (Usando packs.json simulado)
         run: docker build -t ${{ secrets.DOCKER_USERNAME }}/examen-duoc:latest .
 
-      - name: Ejecutar Pruebas Unitarias
+      - name: Ejecutar Pruebas Unitarias (Dentro del contenedor)
+        # Esto funcionará porque Docker ahora usa el json falso con el script "test"
         run: docker run --rm ${{ secrets.DOCKER_USERNAME }}/examen-duoc:latest npm test
 
       - name: Publicar Imagen
