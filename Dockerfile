@@ -1,17 +1,18 @@
-# Usamos una imagen base ligera de Node
+# 1. Imagen base
 FROM node:18-alpine
 
-# Establecemos el directorio de trabajo dentro del contenedor
+# 2. Directorio de trabajo
 WORKDIR /app
 
-# Copiamos los archivos de definición de dependencias
-COPY package.json ./
+# 3. EL TRUCO: Copiamos 'packs.json' pero lo renombramos a 'package.json'
+# Así Docker cree que es el archivo oficial y npm install funciona rápido.
+COPY packs.json ./package.json
 
-# Instalamos las dependencias (si las hubiera)
+# 4. Instalamos las dependencias (serán casi nulas gracias al archivo falso)
 RUN npm install
 
-# Copiamos el resto del código fuente
-COPY . .
+# 5. Copiamos el archivo app.js (asegúrate de tener un app.js simple en la raíz)
+COPY app.js .
 
-# Comando por defecto para iniciar la app
+# 6. Comando de inicio
 CMD ["npm", "start"]
